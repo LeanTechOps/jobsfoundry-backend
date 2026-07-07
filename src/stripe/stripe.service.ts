@@ -97,7 +97,12 @@ export class StripeService {
       }
 
       const subAny = sub as any
-      const plan = mapStripePlanToPrisma(planKey) ?? SubscriptionPlan.FREE
+      // A FREE-priced subscription in trialing state = PRO_FREE trial in our DB
+      const mappedPlan = mapStripePlanToPrisma(planKey) ?? SubscriptionPlan.FREE
+      const plan =
+        sub.status === 'trialing' && mappedPlan === SubscriptionPlan.FREE
+          ? SubscriptionPlan.PRO_FREE
+          : mappedPlan
       const interval = sub.items.data[0]?.price?.recurring?.interval
       const billingCycle: 'MONTHLY' | 'YEARLY' = interval === 'year' ? 'YEARLY' : 'MONTHLY'
       const trialEnd: number | null = subAny.trial_end ?? null
@@ -154,11 +159,12 @@ export class StripeService {
         where: { userId },
         data: {
           stripeCustomerId: customerId,
+          plan: SubscriptionPlan.PRO_FREE,
           currentPeriodStart: new Date(),
           currentPeriodEnd: trialEndsAt,
         },
       })
-      this.logger.log(`[TRIAL] DB-only trial set for userId=${userId}, ends=${trialEndsAt.toISOString()}`)
+      this.logger.log(`[TRIAL] DB-only trial set for userId=${userId} plan=PRO_FREE ends=${trialEndsAt.toISOString()}`)
       return { stripeCustomerId: customerId, stripeSubscriptionId: '' }
     }
 
@@ -180,18 +186,19 @@ export class StripeService {
       `[TRIAL] Subscription ${stripeSub.id} created — status=${stripeSub.status}, trial_end=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
     )
 
-    // 5. Persist IDs and trial period to DB
+    // 5. Persist IDs, PRO_FREE plan, and trial period to DB
     await this.prisma.subscription.update({
       where: { userId },
       data: {
         stripeSubscriptionId: stripeSub.id,
         stripeCustomerId: customerId,
+        plan: SubscriptionPlan.PRO_FREE,
         currentPeriodStart: new Date(),
         currentPeriodEnd: trialEnd ? new Date(trialEnd * 1000) : null,
       },
     })
 
-    this.logger.log(`[TRIAL] DB updated with new subscription ${stripeSub.id} for userId=${userId}`)
+    this.logger.log(`[TRIAL] DB updated: userId=${userId} subscription=${stripeSub.id} plan=PRO_FREE`)
     return { stripeCustomerId: customerId, stripeSubscriptionId: stripeSub.id }
   }
 
@@ -243,6 +250,7 @@ export class StripeService {
         where: { userId },
         select: {
           stripeCustomerId: true,
+          stripeSubscriptionId: true,
           user: {
             select: {
               email: true,
@@ -272,6 +280,11 @@ export class StripeService {
 
       const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4000')
 
+      this.logger.log(
+        `[CHECKOUT] Creating session for userId=${userId} priceId=${stripePriceId} ` +
+        `oldSubscriptionId=${subscription.stripeSubscriptionId ?? 'none'}`,
+      )
+
       const session = await this.stripe.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
@@ -282,7 +295,14 @@ export class StripeService {
         success_url: `${frontendUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${frontendUrl}/pricing`,
         subscription_data: { metadata: { userId } },
-        metadata: { userId },
+        metadata: {
+          userId,
+          // Embedded so the webhook can cancel the old trial sub even on retries
+          // (on retry the DB already shows the new sub ID, so we can't read it from there)
+          ...(subscription.stripeSubscriptionId && {
+            oldSubscriptionId: subscription.stripeSubscriptionId,
+          }),
+        },
       })
 
       return session
@@ -310,10 +330,14 @@ export class StripeService {
 
     if (!subscription) throw new BadRequestException('No subscription found')
 
-    // Use checkout for: FREE plan users who have no active Stripe subscription.
-    // This covers both fresh FREE users and users whose trial ended without subscribing.
+    // Use checkout for: FREE or PRO_FREE (trial) users.
+    // PRO_FREE = active trial → checkout creates a new paid subscription.
+    // FREE = trial expired or never started → same path.
+    // Portal is only for users who already have an active paid subscription.
     const isActivePaidSub =
-      subscription.plan !== SubscriptionPlan.FREE && !!subscription.stripeSubscriptionId
+      subscription.plan !== SubscriptionPlan.FREE &&
+      subscription.plan !== SubscriptionPlan.PRO_FREE &&
+      !!subscription.stripeSubscriptionId
 
     if (!isActivePaidSub) {
       if (!stripePriceId) throw new BadRequestException('Price ID required for new subscriptions')

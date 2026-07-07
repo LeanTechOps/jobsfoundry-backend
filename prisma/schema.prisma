@@ -185,6 +185,7 @@ enum SubscriptionStatus {
 
 enum SubscriptionPlan {
   FREE
+  PRO_FREE
   PRO
   BUSINESS
 }

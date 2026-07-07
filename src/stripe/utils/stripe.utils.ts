@@ -26,6 +26,7 @@ export function mapStripePlanToPrisma(
 
   const planMap: Record<string, SubscriptionPlan> = {
     FREE: SubscriptionPlan.FREE,
+    PRO_FREE: SubscriptionPlan.PRO_FREE,
     PRO: SubscriptionPlan.PRO,
     BUSINESS: SubscriptionPlan.BUSINESS,
   }
