@@ -22,6 +22,47 @@ model User {
   updatedAt     DateTime       @updatedAt
   authProviders AuthProvider[]
   subscription  Subscription?
+  profile       Profile?
+}
+
+// ============================================
+// PROFILE
+// ============================================
+
+model Profile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  headline     String?  @db.VarChar(255)
+  bio          String?  @db.Text
+  location     String?  @db.VarChar(255)
+  phoneNumber  String?  @db.VarChar(50)
+
+  linkedinUrl  String?  @db.VarChar(500)
+  githubUrl    String?  @db.VarChar(500)
+  portfolioUrl String?  @db.VarChar(500)
+
+  resumes      Resume[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Resume {
+  id           String   @id @default(uuid())
+  profileId    String
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  key          String   @db.VarChar(500)
+  thumbnailKey String?  @db.VarChar(500)
+  originalName String   @db.VarChar(255)
+  label        String?  @db.VarChar(100)
+  contentType  String   @db.VarChar(100)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([profileId])
 }
 
 model AuthProvider {

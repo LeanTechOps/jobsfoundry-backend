@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common'
 import { StripeService } from './stripe.service'
 import { StripeWebhookService } from './stripe-webhook.service'
-import { BillingService } from './billing.service'
 import { CreateCheckoutDto } from './dto/create-checkout.dto'
 import { Public } from '../auth/decorator/public.decorator'
 
@@ -20,7 +19,6 @@ export class StripeController {
   constructor(
     private readonly stripeService: StripeService,
     private readonly webhookService: StripeWebhookService,
-    private readonly billingService: BillingService,
   ) {}
 
   @Get('pricing')
@@ -32,16 +30,6 @@ export class StripeController {
   @Get('subscription-status')
   async getSubscriptionStatus(@Request() req) {
     return this.stripeService.getSubscriptionStatus(req.user.id)
-  }
-
-  @Get('billing-info')
-  async getBillingInfo(@Request() req) {
-    return this.billingService.getBillingInfo(req.user.id)
-  }
-
-  @Get('estimated-costs')
-  async getEstimatedCosts(@Request() req) {
-    return this.billingService.getEstimatedCosts(req.user.id)
   }
 
   @Post('create-subscription-session')

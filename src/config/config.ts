@@ -21,4 +21,12 @@ export default () => ({
     secretKey: process.env.STRIPE_SECRET_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   },
+  aws: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION || 'us-east-1',
+    endpointUrl: process.env.AWS_ENDPOINT_URL,
+    s3Bucket: process.env.S3_BUCKET || 'jobblitz-dev',
+    s3Prefix: process.env.S3_PREFIX || 'resumes',
+  },
 })

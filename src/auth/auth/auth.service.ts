@@ -50,6 +50,10 @@ export class AuthService {
                 status: SubscriptionStatus.ACTIVE,
               },
             },
+            // Profile is always created with the user — guaranteed to exist for all downstream logic
+            profile: {
+              create: {},
+            },
           },
           select: { id: true, authProviders: { select: { id: true, providerId: true } } },
         })
@@ -86,6 +90,13 @@ export class AuthService {
           accessToken: googleUser.accessToken,
           refreshToken: googleUser.refreshToken,
         },
+      })
+
+      // Ensure profile exists for users created before profile auto-creation was added
+      await this.prisma.profile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id },
+        update: {},
       })
 
       // Re-sync subscription with Stripe on every login for existing users.

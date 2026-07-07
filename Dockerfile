@@ -1,5 +1,13 @@
 FROM node:18-alpine
-RUN apk add --no-cache openssl
+RUN apk add --no-cache \
+    openssl \
+    cairo \
+    pango \
+    libpng \
+    jpeg \
+    giflib \
+    librsvg \
+    pixman
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
