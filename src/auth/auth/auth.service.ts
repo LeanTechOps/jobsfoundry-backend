@@ -57,13 +57,16 @@ export class AuthService {
 
       this.logger.log(`New user created: ${googleUser.email}`)
 
-      // Fire-and-forget: create Stripe customer + trial subscription.
-      // Errors are caught and logged inside — user login is never blocked by this.
+      // Await Stripe setup so the subscription plan in DB is correct before the JWT is issued.
+      // This prevents the dashboard from flashing FREE on first load for returning Stripe customers.
       const name = [googleUser.firstName, googleUser.lastName].filter(Boolean).join(' ') || undefined
       const createdUserId = user.id
-      this.stripeService
-        .createTrialSubscription(createdUserId, googleUser.email, name)
-        .catch((err) => this.logger.error(`Stripe trial setup failed for ${createdUserId}: ${err.message}`))
+      try {
+        await this.stripeService.createTrialSubscription(createdUserId, googleUser.email, name)
+      } catch (err) {
+        // Non-fatal: subscription stays FREE in DB. Webhook will correct it later.
+        this.logger.error(`Stripe trial setup failed for ${createdUserId}: ${err.message}`)
+      }
     } else {
       await this.prisma.authProvider.upsert({
         where: {
@@ -84,6 +87,16 @@ export class AuthService {
           refreshToken: googleUser.refreshToken,
         },
       })
+
+      // Re-sync subscription with Stripe on every login for existing users.
+      // This ensures plan/status in DB is up to date before the JWT is issued,
+      // preventing the dashboard from flashing the wrong plan on first load.
+      const name = [googleUser.firstName, googleUser.lastName].filter(Boolean).join(' ') || undefined
+      try {
+        await this.stripeService.createTrialSubscription(user.id, googleUser.email, name)
+      } catch (err) {
+        this.logger.error(`Stripe re-sync failed for ${user.id}: ${err.message}`)
+      }
     }
 
     const payload = { sub: user.id, email: googleUser.email }

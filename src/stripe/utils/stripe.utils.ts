@@ -66,17 +66,21 @@ export async function resolveStripeCustomer(
 ): Promise<string> {
   const { userId, email, name, logPrefix = '', logger } = params
 
-  if (email) {
+  if (!email) {
+    logger?.warn(`${logPrefix}No email provided for userId=${userId} — skipping email lookup, creating new customer`)
+  } else {
+    logger?.log(`${logPrefix}Looking up Stripe customer by email=${email} for userId=${userId}`)
     const existing = await stripe.customers.list({ email, limit: 1 })
     const match = existing.data[0]
     if (match) {
-      logger?.log(`${logPrefix}Reusing existing Stripe customer ${match.id} for ${email}`)
+      logger?.log(`${logPrefix}Found existing Stripe customer ${match.id} for email=${email} — reusing`)
       await prisma.subscription.update({
         where: { userId },
         data: { stripeCustomerId: match.id },
       })
       return match.id
     }
+    logger?.log(`${logPrefix}No Stripe customer found for email=${email} — will create a new one`)
   }
 
   const customer = await stripe.customers.create({
@@ -85,7 +89,7 @@ export async function resolveStripeCustomer(
     metadata: { userId },
   })
 
-  logger?.log(`${logPrefix}Created new Stripe customer ${customer.id} for user ${userId}`)
+  logger?.log(`${logPrefix}Created new Stripe customer ${customer.id} for userId=${userId} (email=${email ?? 'none'})`)
 
   await prisma.subscription.update({
     where: { userId },

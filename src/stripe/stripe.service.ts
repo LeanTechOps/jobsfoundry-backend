@@ -56,33 +56,41 @@ export class StripeService {
     })
 
     // 2. Check if this customer already has a Stripe subscription (re-login / env re-use)
+    this.logger.log(`[TRIAL] Checking existing subscriptions for customer=${customerId} userId=${userId}`)
     const existing = await this.stripe.subscriptions.list({
       customer: customerId,
       limit: 1,
       expand: ['data.items.data.price'],
     })
 
+    this.logger.log(`[TRIAL] Found ${existing.data.length} existing subscription(s) for customer=${customerId}`)
+
     if (existing.data.length > 0) {
       const sub = existing.data[0]
       this.logger.warn(
-        `[TRIAL] Customer ${customerId} already has subscription ${sub.id} (${sub.status}) — syncing to DB`,
+        `[TRIAL] Customer ${customerId} already has subscription ${sub.id} (status=${sub.status}) — syncing to DB instead of creating new`,
       )
 
       // Ensure metadata carries userId so future webhooks can look up the record
       if (sub.metadata?.userId !== userId) {
+        this.logger.log(`[TRIAL] Updating subscription ${sub.id} metadata: userId=${userId}`)
         try {
           await this.stripe.subscriptions.update(sub.id, { metadata: { userId } })
         } catch (err) {
           this.logger.warn(`[TRIAL] Could not update subscription metadata: ${err.message}`)
         }
+      } else {
+        this.logger.log(`[TRIAL] Subscription ${sub.id} metadata already has correct userId — skipping update`)
       }
 
       const productId = sub.items.data[0]?.price?.product as string | undefined
+      this.logger.log(`[TRIAL] Resolving product name for productId=${productId ?? 'none'}`)
       let planKey: string | undefined
       if (productId) {
         try {
           const product = await this.stripe.products.retrieve(productId)
           planKey = product.name?.toUpperCase()
+          this.logger.log(`[TRIAL] Resolved product name="${product.name}" → planKey="${planKey}"`)
         } catch (err) {
           this.logger.warn(`[TRIAL] Could not retrieve product ${productId}: ${err.message}`)
         }
@@ -93,6 +101,10 @@ export class StripeService {
       const interval = sub.items.data[0]?.price?.recurring?.interval
       const billingCycle: 'MONTHLY' | 'YEARLY' = interval === 'year' ? 'YEARLY' : 'MONTHLY'
       const trialEnd: number | null = subAny.trial_end ?? null
+
+      this.logger.log(
+        `[TRIAL] Syncing to DB: plan=${plan}, status=${sub.status}, billingCycle=${billingCycle}, trialEnd=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
+      )
 
       await this.prisma.subscription.update({
         where: { userId },
@@ -116,11 +128,15 @@ export class StripeService {
         },
       })
 
+      this.logger.log(`[TRIAL] DB sync complete for userId=${userId}, subscriptionId=${sub.id}`)
       return { stripeCustomerId: customerId, stripeSubscriptionId: sub.id }
     }
 
     // 3. Find the FREE price (unit_amount = 0) in Stripe
+    this.logger.log(`[TRIAL] No existing subscription — searching for FREE price (unit_amount=0) in Stripe`)
     const prices = await this.stripe.prices.list({ active: true, expand: ['data.product'] })
+    this.logger.log(`[TRIAL] Fetched ${prices.data.length} active price(s) from Stripe`)
+
     const freePrice = prices.data.find((p) => {
       const product = p.product as Stripe.Product
       return product?.name?.toUpperCase() === 'FREE' && p.unit_amount === 0
@@ -128,10 +144,10 @@ export class StripeService {
 
     if (!freePrice) {
       this.logger.warn(
-        '[TRIAL] FREE price not found in Stripe — trial tracked by DB dates only. ' +
-          'Create a FREE product (price = $0/month) in your Stripe dashboard to enable automatic expiry.',
+        `[TRIAL] FREE price not found among ${prices.data.length} active prices — ` +
+        `products seen: [${prices.data.map((p) => (p.product as Stripe.Product)?.name ?? 'unknown').join(', ')}]. ` +
+        'Create a FREE product (price = $0/month) in Stripe to enable automatic trial expiry.',
       )
-      // Fall back to DB-only trial (no automatic Stripe expiry)
       const trialEndsAt = new Date()
       trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_PERIOD_DAYS)
       await this.prisma.subscription.update({
@@ -142,12 +158,13 @@ export class StripeService {
           currentPeriodEnd: trialEndsAt,
         },
       })
+      this.logger.log(`[TRIAL] DB-only trial set for userId=${userId}, ends=${trialEndsAt.toISOString()}`)
       return { stripeCustomerId: customerId, stripeSubscriptionId: '' }
     }
 
-    // 4. Create the trial subscription on the FREE product
-    this.logger.log(`[TRIAL] Creating ${TRIAL_PERIOD_DAYS}-day trial subscription for user ${userId}`)
+    this.logger.log(`[TRIAL] Found FREE price ${freePrice.id} — creating ${TRIAL_PERIOD_DAYS}-day trial for userId=${userId}`)
 
+    // 4. Create the trial subscription on the FREE product
     const stripeSub = await this.stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: freePrice.id }],
@@ -160,7 +177,7 @@ export class StripeService {
     const trialEnd: number | null = subAny.trial_end ?? null
 
     this.logger.log(
-      `[TRIAL] Subscription ${stripeSub.id} created — status=${stripeSub.status}, trial_end=${trialEnd}`,
+      `[TRIAL] Subscription ${stripeSub.id} created — status=${stripeSub.status}, trial_end=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
     )
 
     // 5. Persist IDs and trial period to DB
@@ -174,6 +191,7 @@ export class StripeService {
       },
     })
 
+    this.logger.log(`[TRIAL] DB updated with new subscription ${stripeSub.id} for userId=${userId}`)
     return { stripeCustomerId: customerId, stripeSubscriptionId: stripeSub.id }
   }
 

@@ -2,14 +2,11 @@ import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
 import { AppModule } from './app.module'
 import cookieParser from 'cookie-parser'
-import * as express from 'express'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true })
 
   app.use(cookieParser())
-
-  app.use('/stripe/webhook', express.raw({ type: 'application/json' }))
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
 
