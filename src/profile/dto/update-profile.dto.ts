@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator'
+import { IsOptional, IsString, IsUrl, IsArray, IsEnum, MaxLength } from 'class-validator'
+import { VisaType } from '@prisma/client'
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -34,4 +35,41 @@ export class UpdateProfileDto {
   @IsUrl()
   @MaxLength(500)
   portfolioUrl?: string
+
+  // Address
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  state?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  country?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  zipCode?: string
+
+  // Work authorization
+  @IsOptional()
+  @IsEnum(VisaType)
+  visaType?: VisaType
+
+  // Skills
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  skills?: string[]
 }
