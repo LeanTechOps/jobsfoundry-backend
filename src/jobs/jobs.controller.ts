@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
 import { JobsService } from './jobs.service'
 import { CreateJobDto } from './dto/create-job.dto'
 import { UpdateJobDto } from './dto/update-job.dto'
@@ -47,5 +47,32 @@ export class JobsController {
   @UseGuards(AdminGuard)
   remove(@Param('id') id: string) {
     return this.jobsService.remove(id)
+  }
+
+  // ── Logo upload (same 2-step presigned flow as resumes) ──
+
+  @Post(':id/logo/initiate')
+  @UseGuards(AdminGuard)
+  initiateLogoUpload(@Param('id') id: string, @Body('contentType') contentType: string) {
+    return this.jobsService.initiateLogoUpload(id, contentType)
+  }
+
+  @Post(':id/logo/confirm')
+  @UseGuards(AdminGuard)
+  confirmLogoUpload(@Param('id') id: string, @Body('logoKey') logoKey: string) {
+    return this.jobsService.confirmLogoUpload(id, logoKey)
+  }
+
+  @Get(':id/logo/url')
+  @UseGuards(AdminGuard)
+  getLogoUrl(@Param('id') id: string) {
+    return this.jobsService.getLogoUrl(id)
+  }
+
+  @Delete(':id/logo')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  deleteLogo(@Param('id') id: string) {
+    return this.jobsService.deleteLogo(id)
   }
 }

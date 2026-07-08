@@ -254,6 +254,8 @@ model Job {
 
   applicationUrl     String?         @db.VarChar(500)
 
+  companyLogoKey     String?         @db.VarChar(500)
+
   postedById         String?
   postedBy           User?           @relation(fields: [postedById], references: [id], onDelete: SetNull)
 

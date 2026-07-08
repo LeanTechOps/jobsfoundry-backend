@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUrl, IsArray, IsEnum, MaxLength } from 'class-validator'
+import { IsOptional, IsString, IsArray, IsEnum, MaxLength } from 'class-validator'
+import { Type } from 'class-transformer'
 import { VisaType } from '@prisma/client'
 
 export class UpdateProfileDto {
@@ -22,19 +23,16 @@ export class UpdateProfileDto {
   phoneNumber?: string
 
   @IsOptional()
-  @IsUrl()
-  @MaxLength(500)
-  linkedinUrl?: string
+  @Type(() => String)
+  linkedinUrl?: string | null
 
   @IsOptional()
-  @IsUrl()
-  @MaxLength(500)
-  githubUrl?: string
+  @Type(() => String)
+  githubUrl?: string | null
 
   @IsOptional()
-  @IsUrl()
-  @MaxLength(500)
-  portfolioUrl?: string
+  @Type(() => String)
+  portfolioUrl?: string | null
 
   // Address
   @IsOptional()
