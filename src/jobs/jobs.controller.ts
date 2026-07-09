@@ -3,7 +3,7 @@ import { JobsService } from './jobs.service'
 import { CreateJobDto } from './dto/create-job.dto'
 import { UpdateJobDto } from './dto/update-job.dto'
 import { ListJobsDto } from './dto/list-jobs.dto'
-import { AdminGuard } from 'src/admin/guards/admin.guard'
+import { StaffGuard } from 'src/auth/guards/staff.guard'
 
 @Controller('jobs')
 export class JobsController {
@@ -11,7 +11,7 @@ export class JobsController {
 
   // Admin: create a job
   @Post()
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   create(@Body() dto: CreateJobDto, @Req() req) {
     return this.jobsService.create(dto, req.user.id)
   }
@@ -24,7 +24,7 @@ export class JobsController {
 
   // Admin: stats
   @Get('stats')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   getStats() {
     return this.jobsService.getStats()
   }
@@ -37,14 +37,14 @@ export class JobsController {
 
   // Admin: update
   @Patch(':id')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   update(@Param('id') id: string, @Body() dto: UpdateJobDto) {
     return this.jobsService.update(id, dto)
   }
 
   // Admin: delete
   @Delete(':id')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   remove(@Param('id') id: string) {
     return this.jobsService.remove(id)
   }
@@ -52,25 +52,25 @@ export class JobsController {
   // ── Logo upload (same 2-step presigned flow as resumes) ──
 
   @Post(':id/logo/initiate')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   initiateLogoUpload(@Param('id') id: string, @Body('contentType') contentType: string) {
     return this.jobsService.initiateLogoUpload(id, contentType)
   }
 
   @Post(':id/logo/confirm')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   confirmLogoUpload(@Param('id') id: string, @Body('logoKey') logoKey: string) {
     return this.jobsService.confirmLogoUpload(id, logoKey)
   }
 
   @Get(':id/logo/url')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   getLogoUrl(@Param('id') id: string) {
     return this.jobsService.getLogoUrl(id)
   }
 
   @Delete(':id/logo')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   @HttpCode(HttpStatus.OK)
   deleteLogo(@Param('id') id: string) {
     return this.jobsService.deleteLogo(id)

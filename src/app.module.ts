@@ -9,6 +9,8 @@ import { StripeModule } from './stripe/stripe.module'
 import { ProfileModule } from './profile/profile.module'
 import { JobsModule } from './jobs/jobs.module'
 import { AdminModule } from './admin/admin.module'
+import { ManagerModule } from './manager/manager.module'
+import { RecruiterModule } from './recruiter/recruiter.module'
 import { ApplicationsModule } from './applications/applications.module'
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard'
 import appConfig from './config/config'
@@ -44,6 +46,8 @@ import appConfig from './config/config'
     ProfileModule,
     JobsModule,
     AdminModule,
+    ManagerModule,
+    RecruiterModule,
     ApplicationsModule,
   ],
   providers: [

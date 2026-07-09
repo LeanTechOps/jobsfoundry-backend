@@ -22,7 +22,7 @@ export class S3Service {
     const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID') || 'test'
     const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || 'test'
 
-    this.bucket = this.configService.get<string>('S3_BUCKET') || 'jobblitz-dev'
+    this.bucket = this.configService.get<string>('S3_BUCKET') || 'jobsfoundry-dev'
     this.prefix = this.configService.get<string>('S3_PREFIX') || 'resumes'
 
     this.client = new S3Client({

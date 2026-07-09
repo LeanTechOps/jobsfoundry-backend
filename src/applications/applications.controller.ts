@@ -5,7 +5,7 @@ import {
 import { ApplicationsService } from './applications.service'
 import { CreateApplicationDto } from './dto/create-application.dto'
 import { UpdateApplicationDto } from './dto/update-application.dto'
-import { AdminGuard } from 'src/admin/guards/admin.guard'
+import { StaffGuard } from 'src/auth/guards/staff.guard'
 
 @Controller('applications')
 export class ApplicationsController {
@@ -15,28 +15,28 @@ export class ApplicationsController {
 
   /** Create a new application (admin selects user + resume) */
   @Post()
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   create(@Body() dto: CreateApplicationDto) {
     return this.svc.create(dto)
   }
 
   /** List all applications for a specific job */
   @Get('job/:jobId')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   findByJob(@Param('jobId') jobId: string) {
     return this.svc.findByJob(jobId)
   }
 
   /** Update application status, interview date, resume, or notes */
   @Patch(':id')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   update(@Param('id') id: string, @Body() dto: UpdateApplicationDto) {
     return this.svc.update(id, dto)
   }
 
   /** Remove an application */
   @Delete(':id')
-  @UseGuards(AdminGuard)
+  @UseGuards(StaffGuard)
   remove(@Param('id') id: string) {
     return this.svc.remove(id)
   }

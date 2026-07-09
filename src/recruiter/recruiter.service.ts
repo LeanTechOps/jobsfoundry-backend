@@ -5,7 +5,7 @@ import { S3Service } from 'src/s3/s3.service'
 import { ListUsersDto } from './dto/list-users.dto'
 
 @Injectable()
-export class AdminService {
+export class RecruiterService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
@@ -28,11 +28,11 @@ export class AdminService {
   }
 
   async listUsers(query: ListUsersDto) {
-    const { page = 1, limit = 20, search, skills, visaType, plan, role } = query
+    const { page = 1, limit = 20, search, skills, visaType, plan } = query
     const skip = (page - 1) * limit
 
     const where: Prisma.UserWhereInput = {
-      ...(role && { role }),
+      role: UserRole.MEMBER,
       ...(search && {
         OR: [
           { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
@@ -118,7 +118,7 @@ export class AdminService {
       },
     })
 
-    if (!user) throw new NotFoundException('User not found')
+    if (!user || user.role !== UserRole.MEMBER) throw new NotFoundException('User not found')
 
     // Attach presigned URLs (thumbnail + download) for resumes
     const resumesWithUrls = user.profile
@@ -140,14 +140,17 @@ export class AdminService {
   }
 
   async getDashboardStats() {
+    const memberWhere = { role: UserRole.MEMBER }
     const [totalUsers, totalJobs, planBreakdown, recentUsers] = await Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: memberWhere }),
       this.prisma.job.count(),
       this.prisma.subscription.groupBy({
         by: ['plan'],
         _count: { plan: true },
+        where: { user: memberWhere },
       }),
       this.prisma.user.findMany({
+        where: memberWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -178,9 +181,4 @@ export class AdminService {
     }
   }
 
-  async updateUserRole(userId: string, role: UserRole) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } })
-    if (!user) throw new NotFoundException('User not found')
-    return this.prisma.user.update({ where: { id: userId }, data: { role }, select: { id: true, role: true } })
-  }
 }

@@ -307,6 +307,8 @@ enum ProviderEnum {
 
 enum UserRole {
   MEMBER
+  MANAGER
+  RECRUITER
   ADMIN
 }
 

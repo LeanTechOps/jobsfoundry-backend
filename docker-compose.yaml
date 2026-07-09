@@ -11,11 +11,11 @@ services:
 
   postgres:
     image: postgres:17
-    container_name: jobblitz_postgres
+    container_name: jobsfoundry_postgres
     environment:
-      POSTGRES_DB: jobblitz
-      POSTGRES_USER: jobblitz
-      POSTGRES_PASSWORD: jobblitz
+      POSTGRES_DB: jobsfoundry
+      POSTGRES_USER: jobsfoundry
+      POSTGRES_PASSWORD: jobsfoundry
     ports:
       - "5432:5432"
     volumes:
@@ -23,6 +23,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: jobblitz_redis
+    container_name: jobsfoundry_redis
     restart: always
 

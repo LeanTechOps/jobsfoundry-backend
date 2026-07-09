@@ -1,10 +1,13 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common'
 import { AdminService } from './admin.service'
 import { AdminGuard } from './guards/admin.guard'
+import { StaffGuard } from 'src/auth/guards/staff.guard'
 import { ListUsersDto } from './dto/list-users.dto'
+import { UpdateUserRoleDto } from './dto/update-user-role.dto'
 
+/** All staff (admin/manager/recruiter) can read data via /admin endpoints. */
 @Controller('admin')
-@UseGuards(AdminGuard)
+@UseGuards(StaffGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
@@ -31,5 +34,12 @@ export class AdminController {
   @Get('users/:id')
   getUserProfile(@Param('id') id: string) {
     return this.adminService.getUserProfile(id)
+  }
+
+  /** Admin-only: assign a role to any user */
+  @Patch('users/:id/role')
+  @UseGuards(AdminGuard)
+  updateUserRole(@Param('id') id: string, @Body() dto: UpdateUserRoleDto) {
+    return this.adminService.updateUserRole(id, dto.role)
   }
 }

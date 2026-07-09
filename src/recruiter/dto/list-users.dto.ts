@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsEnum, IsInt, IsArray, Min } from 'class-validator'
 import { Type, Transform } from 'class-transformer'
-import { SubscriptionPlan, UserRole, VisaType } from '@prisma/client'
+import { SubscriptionPlan, VisaType } from '@prisma/client'
 
 export class ListUsersDto {
   @IsOptional()
@@ -21,10 +21,6 @@ export class ListUsersDto {
   @IsOptional()
   @IsEnum(SubscriptionPlan)
   plan?: SubscriptionPlan
-
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole
 
   @IsOptional()
   @Type(() => Number)
