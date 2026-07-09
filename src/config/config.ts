@@ -26,7 +26,7 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     region: process.env.AWS_REGION || 'us-east-1',
     endpointUrl: process.env.AWS_ENDPOINT_URL,
-    s3Bucket: process.env.S3_BUCKET || 'jobblitz-dev',
+    s3Bucket: process.env.S3_BUCKET || 'jobsfoundry-dev',
     s3Prefix: process.env.S3_PREFIX || 'resumes',
   },
 })

@@ -25,7 +25,7 @@ export class AuthService {
   }): Promise<string> {
     let user = await this.prisma.user.findUnique({
       where: { email: googleUser.email },
-      select: { id: true, authProviders: { select: { id: true, providerId: true } } },
+      select: { id: true, role: true, authProviders: { select: { id: true, providerId: true } } },
     })
 
     if (!user) {
@@ -55,7 +55,7 @@ export class AuthService {
               create: {},
             },
           },
-          select: { id: true, authProviders: { select: { id: true, providerId: true } } },
+          select: { id: true, role: true, authProviders: { select: { id: true, providerId: true } } },
         })
       })
 
@@ -110,7 +110,7 @@ export class AuthService {
       }
     }
 
-    const payload = { sub: user.id, email: googleUser.email }
+    const payload = { sub: user.id, email: googleUser.email, role: user.role }
     return this.jwtService.sign(payload)
   }
 
@@ -123,6 +123,7 @@ export class AuthService {
         firstName: true,
         lastName: true,
         avatar: true,
+        role: true,
         createdAt: true,
         subscription: {
           select: {
@@ -150,6 +151,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         avatar: user.avatar,
+        role: user.role,
         createdAt: user.createdAt,
       },
       subscription: user.subscription

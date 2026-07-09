@@ -194,17 +194,20 @@ export class ResumeService {
 
     await this.prisma.resume.delete({ where: { id: resumeId } })
 
-    if (resume.isDefault) {
-      const next = await this.prisma.resume.findFirst({
-        where: { profileId: resume.profileId },
-        orderBy: { createdAt: 'desc' },
+    // After deletion: if the deleted resume was default OR only one resume now remains,
+    // ensure exactly one resume is marked as default.
+    const remaining = await this.prisma.resume.findMany({
+      where: { profileId: resume.profileId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, isDefault: true },
+    })
+
+    const hasDefault = remaining.some((r) => r.isDefault)
+    if (remaining.length > 0 && !hasDefault) {
+      await this.prisma.resume.update({
+        where: { id: remaining[0].id },
+        data: { isDefault: true },
       })
-      if (next) {
-        await this.prisma.resume.update({
-          where: { id: next.id },
-          data: { isDefault: true },
-        })
-      }
     }
 
     return { message: 'Resume deleted successfully' }

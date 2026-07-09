@@ -13,16 +13,18 @@ datasource db {
 // ============================================
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique @db.VarChar(255)
-  firstName     String?        @db.VarChar(255)
-  lastName      String?        @db.VarChar(255)
+  id            String           @id @default(uuid())
+  email         String           @unique @db.VarChar(255)
+  firstName     String?          @db.VarChar(255)
+  lastName      String?          @db.VarChar(255)
   avatar        String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  role          UserRole         @default(MEMBER)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
   authProviders AuthProvider[]
   subscription  Subscription?
   profile       Profile?
+  postedJobs    Job[]
 }
 
 // ============================================
@@ -43,27 +45,43 @@ model Profile {
   githubUrl    String?  @db.VarChar(500)
   portfolioUrl String?  @db.VarChar(500)
 
+  // Address
+  address      String?  @db.VarChar(500)
+  city         String?  @db.VarChar(100)
+  state        String?  @db.VarChar(100)
+  country      String?  @db.VarChar(100)
+  zipCode      String?  @db.VarChar(20)
+
+  // Work authorisation
+  visaType     VisaType?
+
+  // Skills — stored as a simple array for filtering
+  skills       String[]
+
   resumes      Resume[]
+  applications JobApplication[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 model Resume {
-  id           String   @id @default(uuid())
+  id           String           @id @default(uuid())
   profileId    String
-  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  key          String   @db.VarChar(500)
-  thumbnailKey String?  @db.VarChar(500)
-  originalName String   @db.VarChar(255)
-  label        String?  @db.VarChar(100)
-  contentType  String   @db.VarChar(100)
-  isDefault    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  profile      Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  key          String           @db.VarChar(500)
+  thumbnailKey String?          @db.VarChar(500)
+  originalName String           @db.VarChar(255)
+  label        String?          @db.VarChar(100)
+  contentType  String           @db.VarChar(100)
+  isDefault    Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  applications JobApplication[]
 
   @@index([profileId])
 }
+
 
 model AuthProvider {
   id           String       @id @default(uuid())
@@ -208,11 +226,148 @@ model StripeWebhookEvent {
 }
 
 // ============================================
+// JOBS
+// ============================================
+
+model Job {
+  id                 String          @id @default(uuid())
+  title              String          @db.VarChar(255)
+  company            String          @db.VarChar(255)
+  companyDomain      String?         @db.VarChar(255)
+  location           String?         @db.VarChar(255)
+  workMode           WorkMode        @default(ONSITE)
+  type               JobType         @default(FULL_TIME)
+  experienceLevel    ExperienceLevel @default(MID)
+  status             JobStatus       @default(DRAFT)
+
+  description        String          @db.Text
+  responsibilities   String?         @db.Text
+  requirements       String?         @db.Text
+  benefits           String?         @db.Text
+
+  skills             String[]
+
+  salaryMin          Decimal?        @db.Decimal(12, 2)
+  salaryMax          Decimal?        @db.Decimal(12, 2)
+  salaryCurrency     String          @default("USD") @db.VarChar(3)
+  salaryPeriod       SalaryPeriod    @default(MONTHLY)
+  salaryNegotiable   Boolean         @default(false)
+
+  visaSponsorship    Boolean         @default(false)
+
+  applicationUrl     String?         @db.VarChar(500)
+
+  companyLogoKey     String?         @db.VarChar(500)
+
+  postedById         String?
+  postedBy           User?           @relation(fields: [postedById], references: [id], onDelete: SetNull)
+  applications       JobApplication[]
+
+  closesAt           DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([experienceLevel])
+  @@index([createdAt])
+}
+
+// ============================================
+// JOB APPLICATIONS
+// ============================================
+
+model JobApplication {
+  id          String            @id @default(uuid())
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId       String
+  profile     Profile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId   String
+  resume      Resume?           @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  resumeId    String?
+  status      ApplicationStatus @default(APPLIED)
+  interviewAt DateTime?
+  notes       String?           @db.Text
+  appliedAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([jobId, profileId])
+  @@index([profileId])
+  @@index([jobId])
+  @@index([status])
+}
+
+// ============================================
 // ENUMS
 // ============================================
 
 enum ProviderEnum {
   GOOGLE
+}
+
+enum UserRole {
+  MEMBER
+  MANAGER
+  RECRUITER
+  ADMIN
+}
+
+enum VisaType {
+  US_CITIZEN
+  GREEN_CARD
+  H1B
+  H4_EAD
+  L1
+  O1
+  TN
+  F1_OPT
+  F1_CPT
+  EAD
+  OTHER
+}
+
+enum WorkMode {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+  EXECUTIVE
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+enum SalaryPeriod {
+  HOURLY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
 }
 
 enum SubscriptionStatus {
