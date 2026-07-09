@@ -9,6 +9,9 @@ const JOB_SELECT = {
   location: true, workMode: true, type: true, experienceLevel: true,
   salaryMin: true, salaryMax: true, salaryCurrency: true, salaryPeriod: true,
   salaryNegotiable: true, visaSponsorship: true, status: true,
+  description: true, responsibilities: true, requirements: true, benefits: true,
+  skills: true, applicationUrl: true, closesAt: true, createdAt: true,
+  postedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
 }
 
 const PROFILE_SELECT = {
