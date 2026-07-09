@@ -9,6 +9,7 @@ import { StripeModule } from './stripe/stripe.module'
 import { ProfileModule } from './profile/profile.module'
 import { JobsModule } from './jobs/jobs.module'
 import { AdminModule } from './admin/admin.module'
+import { ApplicationsModule } from './applications/applications.module'
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard'
 import appConfig from './config/config'
 
@@ -43,6 +44,7 @@ import appConfig from './config/config'
     ProfileModule,
     JobsModule,
     AdminModule,
+    ApplicationsModule,
   ],
   providers: [
     // Apply JwtAuthGuard globally; use @Public() decorator to opt out

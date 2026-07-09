@@ -13,14 +13,14 @@ datasource db {
 // ============================================
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique @db.VarChar(255)
-  firstName     String?        @db.VarChar(255)
-  lastName      String?        @db.VarChar(255)
+  id            String           @id @default(uuid())
+  email         String           @unique @db.VarChar(255)
+  firstName     String?          @db.VarChar(255)
+  lastName      String?          @db.VarChar(255)
   avatar        String?
-  role          UserRole       @default(MEMBER)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  role          UserRole         @default(MEMBER)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
   authProviders AuthProvider[]
   subscription  Subscription?
   profile       Profile?
@@ -59,26 +59,29 @@ model Profile {
   skills       String[]
 
   resumes      Resume[]
+  applications JobApplication[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 model Resume {
-  id           String   @id @default(uuid())
+  id           String           @id @default(uuid())
   profileId    String
-  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  key          String   @db.VarChar(500)
-  thumbnailKey String?  @db.VarChar(500)
-  originalName String   @db.VarChar(255)
-  label        String?  @db.VarChar(100)
-  contentType  String   @db.VarChar(100)
-  isDefault    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  profile      Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  key          String           @db.VarChar(500)
+  thumbnailKey String?          @db.VarChar(500)
+  originalName String           @db.VarChar(255)
+  label        String?          @db.VarChar(100)
+  contentType  String           @db.VarChar(100)
+  isDefault    Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  applications JobApplication[]
 
   @@index([profileId])
 }
+
 
 model AuthProvider {
   id           String       @id @default(uuid())
@@ -258,6 +261,7 @@ model Job {
 
   postedById         String?
   postedBy           User?           @relation(fields: [postedById], references: [id], onDelete: SetNull)
+  applications       JobApplication[]
 
   closesAt           DateTime?
   createdAt          DateTime        @default(now())
@@ -267,6 +271,30 @@ model Job {
   @@index([type])
   @@index([experienceLevel])
   @@index([createdAt])
+}
+
+// ============================================
+// JOB APPLICATIONS
+// ============================================
+
+model JobApplication {
+  id          String            @id @default(uuid())
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId       String
+  profile     Profile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId   String
+  resume      Resume?           @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  resumeId    String?
+  status      ApplicationStatus @default(APPLIED)
+  interviewAt DateTime?
+  notes       String?           @db.Text
+  appliedAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([jobId, profileId])
+  @@index([profileId])
+  @@index([jobId])
+  @@index([status])
 }
 
 // ============================================
@@ -323,6 +351,14 @@ enum JobStatus {
   ACTIVE
   PAUSED
   CLOSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+  WITHDRAWN
 }
 
 enum SalaryPeriod {
