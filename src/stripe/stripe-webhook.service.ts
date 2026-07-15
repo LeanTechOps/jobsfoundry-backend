@@ -11,10 +11,11 @@ import {
 } from './utils/stripe.utils'
 
 const PLAN_ORDER: Record<string, number> = {
-  FREE: 0,
-  PRO_FREE: 1,
-  PRO: 2,
-  BUSINESS: 3,
+  FORGE: 0,
+  FORGE_FREE: 1,
+  CRAFT: 2,
+  LAUNCH: 3,
+  MOMENTUM: 4,
 }
 
 @Injectable()
@@ -226,8 +227,8 @@ export class StripeWebhookService {
       return
     }
 
-    // For trialing subscriptions: sync IDs, set plan=PRO_FREE so we can distinguish
-    // from an actual FREE plan. Stripe fires another event when trial converts to active.
+    // For trialing subscriptions: sync IDs, set plan=FORGE_FREE so we can distinguish
+    // from an actual FORGE plan. Stripe fires another event when trial converts to active.
     if (stripeSubscription.status === 'trialing') {
       const subAny = stripeSubscription as any
       const trialEnd: number | null = subAny.trial_end ?? null
@@ -237,20 +238,20 @@ export class StripeWebhookService {
           : (stripeSubscription.customer as Stripe.Customer | null)?.id ?? null
 
       this.logger.log(
-        `[SUB_UPDATED] Trial subscription — setting plan=PRO_FREE, trialEnd=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
+        `[SUB_UPDATED] Trial subscription — setting plan=FORGE_FREE, trialEnd=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
       )
 
       await this.prisma.subscription.update({
         where: { userId },
         data: {
           stripeSubscriptionId: stripeSubscription.id,
-          plan: SubscriptionPlan.PRO_FREE,
+          plan: SubscriptionPlan.FORGE_FREE,
           ...(customerId && { stripeCustomerId: customerId }),
           currentPeriodStart: new Date(stripeSubscription.created * 1000),
           ...(trialEnd && { currentPeriodEnd: new Date(trialEnd * 1000) }),
         },
       })
-      this.logger.log(`[SUB_UPDATED] Synced trial subscription ${stripeSubscription.id} → PRO_FREE for userId=${userId}`)
+      this.logger.log(`[SUB_UPDATED] Synced trial subscription ${stripeSubscription.id} → FORGE_FREE for userId=${userId}`)
       return
     }
 
@@ -375,7 +376,7 @@ export class StripeWebhookService {
     await this.prisma.subscription.update({
       where: { userId },
       data: {
-        plan: SubscriptionPlan.FREE,
+        plan: SubscriptionPlan.FORGE,
         status: 'ACTIVE',
         stripeSubscriptionId: null,
         billingCycle: 'MONTHLY',
@@ -394,12 +395,12 @@ export class StripeWebhookService {
         oldStatus: subscription.status,
         newStatus: 'ACTIVE',
         oldPlan: subscription.plan,
-        newPlan: SubscriptionPlan.FREE,
-        description: 'Subscription canceled — downgraded to FREE',
+        newPlan: SubscriptionPlan.FORGE,
+        description: 'Subscription canceled — downgraded to Forge',
       },
     })
 
-    this.logger.log(`Subscription deleted for user ${userId} — plan reset to FREE`)
+    this.logger.log(`Subscription deleted for user ${userId} — plan reset to FORGE`)
   }
 
   /**

@@ -98,10 +98,10 @@ export class StripeService {
 
       const subAny = sub as any
       // A FREE-priced subscription in trialing state = PRO_FREE trial in our DB
-      const mappedPlan = mapStripePlanToPrisma(planKey) ?? SubscriptionPlan.FREE
+      const mappedPlan = mapStripePlanToPrisma(planKey) ?? SubscriptionPlan.FORGE
       const plan =
-        sub.status === 'trialing' && mappedPlan === SubscriptionPlan.FREE
-          ? SubscriptionPlan.PRO_FREE
+        sub.status === 'trialing' && mappedPlan === SubscriptionPlan.FORGE
+          ? SubscriptionPlan.FORGE_FREE
           : mappedPlan
       const interval = sub.items.data[0]?.price?.recurring?.interval
       const billingCycle: 'MONTHLY' | 'YEARLY' = interval === 'year' ? 'YEARLY' : 'MONTHLY'
@@ -137,21 +137,21 @@ export class StripeService {
       return { stripeCustomerId: customerId, stripeSubscriptionId: sub.id }
     }
 
-    // 3. Find the FREE price (unit_amount = 0) in Stripe
-    this.logger.log(`[TRIAL] No existing subscription — searching for FREE price (unit_amount=0) in Stripe`)
+    // 3. Find the FORGE price (unit_amount = 0) in Stripe
+    this.logger.log(`[TRIAL] No existing subscription — searching for FORGE price (unit_amount=0) in Stripe`)
     const prices = await this.stripe.prices.list({ active: true, expand: ['data.product'] })
     this.logger.log(`[TRIAL] Fetched ${prices.data.length} active price(s) from Stripe`)
 
     const freePrice = prices.data.find((p) => {
       const product = p.product as Stripe.Product
-      return product?.name?.toUpperCase() === 'FREE' && p.unit_amount === 0
+      return product?.name?.toUpperCase() === 'FORGE' && p.unit_amount === 0
     })
 
     if (!freePrice) {
       this.logger.warn(
-        `[TRIAL] FREE price not found among ${prices.data.length} active prices — ` +
+        `[TRIAL] FORGE price not found among ${prices.data.length} active prices — ` +
         `products seen: [${prices.data.map((p) => (p.product as Stripe.Product)?.name ?? 'unknown').join(', ')}]. ` +
-        'Create a FREE product (price = $0/month) in Stripe to enable automatic trial expiry.',
+        'Create a FORGE product (price = $0/month) in Stripe to enable automatic trial expiry.',
       )
       const trialEndsAt = new Date()
       trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_PERIOD_DAYS)
@@ -159,18 +159,18 @@ export class StripeService {
         where: { userId },
         data: {
           stripeCustomerId: customerId,
-          plan: SubscriptionPlan.PRO_FREE,
+          plan: SubscriptionPlan.FORGE_FREE,
           currentPeriodStart: new Date(),
           currentPeriodEnd: trialEndsAt,
         },
       })
-      this.logger.log(`[TRIAL] DB-only trial set for userId=${userId} plan=PRO_FREE ends=${trialEndsAt.toISOString()}`)
+      this.logger.log(`[TRIAL] DB-only trial set for userId=${userId} plan=FORGE_FREE ends=${trialEndsAt.toISOString()}`)
       return { stripeCustomerId: customerId, stripeSubscriptionId: '' }
     }
 
-    this.logger.log(`[TRIAL] Found FREE price ${freePrice.id} — creating ${TRIAL_PERIOD_DAYS}-day trial for userId=${userId}`)
+    this.logger.log(`[TRIAL] Found FORGE price ${freePrice.id} — creating ${TRIAL_PERIOD_DAYS}-day trial for userId=${userId}`)
 
-    // 4. Create the trial subscription on the FREE product
+    // 4. Create the trial subscription on the FORGE product
     const stripeSub = await this.stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: freePrice.id }],
@@ -186,19 +186,19 @@ export class StripeService {
       `[TRIAL] Subscription ${stripeSub.id} created — status=${stripeSub.status}, trial_end=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
     )
 
-    // 5. Persist IDs, PRO_FREE plan, and trial period to DB
+    // 5. Persist IDs, FORGE_FREE plan, and trial period to DB
     await this.prisma.subscription.update({
       where: { userId },
       data: {
         stripeSubscriptionId: stripeSub.id,
         stripeCustomerId: customerId,
-        plan: SubscriptionPlan.PRO_FREE,
+        plan: SubscriptionPlan.FORGE_FREE,
         currentPeriodStart: new Date(),
         currentPeriodEnd: trialEnd ? new Date(trialEnd * 1000) : null,
       },
     })
 
-    this.logger.log(`[TRIAL] DB updated: userId=${userId} subscription=${stripeSub.id} plan=PRO_FREE`)
+    this.logger.log(`[TRIAL] DB updated: userId=${userId} subscription=${stripeSub.id} plan=FORGE_FREE`)
     return { stripeCustomerId: customerId, stripeSubscriptionId: stripeSub.id }
   }
 
@@ -290,7 +290,6 @@ export class StripeService {
         mode: 'subscription',
         payment_method_types: ['card'],
         line_items: [{ price: stripePriceId, quantity: 1 }],
-        automatic_tax: { enabled: true },
         customer_update: { address: 'auto' },
         success_url: `${frontendUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${frontendUrl}/pricing`,
@@ -335,8 +334,8 @@ export class StripeService {
     // FREE = trial expired or never started → same path.
     // Portal is only for users who already have an active paid subscription.
     const isActivePaidSub =
-      subscription.plan !== SubscriptionPlan.FREE &&
-      subscription.plan !== SubscriptionPlan.PRO_FREE &&
+      subscription.plan !== SubscriptionPlan.FORGE &&
+      subscription.plan !== SubscriptionPlan.FORGE_FREE &&
       !!subscription.stripeSubscriptionId
 
     if (!isActivePaidSub) {
