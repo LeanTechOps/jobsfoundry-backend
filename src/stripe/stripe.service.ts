@@ -11,12 +11,12 @@ import {
   resolveStripeCustomer,
 } from './utils/stripe.utils'
 
-const TRIAL_PERIOD_DAYS = 15
 
 @Injectable()
 export class StripeService {
   private stripe: Stripe
   private readonly logger = new Logger(StripeService.name)
+  private readonly trialDays: number
 
   constructor(
     private readonly configService: ConfigService,
@@ -28,6 +28,8 @@ export class StripeService {
     this.stripe = new Stripe(apiKey, {
       apiVersion: '2025-12-15.clover' as any,
     })
+
+    this.trialDays = parseInt(this.configService.get<string>('TRIAL_PERIOD_DAYS', '7'), 10)
   }
 
   // ─── Trial setup (called at signup) ────────────────────────────────────────
@@ -154,7 +156,7 @@ export class StripeService {
         'Create a FORGE product (price = $0/month) in Stripe to enable automatic trial expiry.',
       )
       const trialEndsAt = new Date()
-      trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_PERIOD_DAYS)
+      trialEndsAt.setDate(trialEndsAt.getDate() + this.trialDays)
       await this.prisma.subscription.update({
         where: { userId },
         data: {
@@ -168,13 +170,13 @@ export class StripeService {
       return { stripeCustomerId: customerId, stripeSubscriptionId: '' }
     }
 
-    this.logger.log(`[TRIAL] Found FORGE price ${freePrice.id} — creating ${TRIAL_PERIOD_DAYS}-day trial for userId=${userId}`)
+    this.logger.log(`[TRIAL] Found FORGE price ${freePrice.id} — creating ${this.trialDays}-day trial for userId=${userId}`)
 
     // 4. Create the trial subscription on the FORGE product
     const stripeSub = await this.stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: freePrice.id }],
-      trial_period_days: TRIAL_PERIOD_DAYS,
+      trial_period_days: this.trialDays,
       payment_behavior: 'default_incomplete',
       metadata: { userId },
     })
