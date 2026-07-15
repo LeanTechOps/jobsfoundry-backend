@@ -46,7 +46,7 @@ export class AuthService {
             },
             subscription: {
               create: {
-                plan: SubscriptionPlan.FREE,
+                plan: SubscriptionPlan.FORGE,
                 status: SubscriptionStatus.ACTIVE,
               },
             },
@@ -140,7 +140,7 @@ export class AuthService {
 
     const now = new Date()
     const isInTrial =
-      user.subscription?.plan === SubscriptionPlan.FREE &&
+      user.subscription?.plan === SubscriptionPlan.FORGE &&
       user.subscription?.currentPeriodEnd != null &&
       user.subscription.currentPeriodEnd > now
 

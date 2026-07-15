@@ -108,7 +108,7 @@ model Subscription {
   stripeCustomerId     String?             @unique
   stripeSubscriptionId String?             @unique
   status               SubscriptionStatus  @default(ACTIVE)
-  plan                 SubscriptionPlan    @default(FREE)
+  plan                 SubscriptionPlan    @default(FORGE)
   billingCycle         BillingCycle        @default(MONTHLY)
   subscriptionStartedAt DateTime?
   currentPeriodStart   DateTime?
@@ -380,10 +380,11 @@ enum SubscriptionStatus {
 }
 
 enum SubscriptionPlan {
-  FREE
-  PRO_FREE
-  PRO
-  BUSINESS
+  FORGE
+  FORGE_FREE
+  CRAFT
+  LAUNCH
+  MOMENTUM
 }
 
 enum BillingCycle {
