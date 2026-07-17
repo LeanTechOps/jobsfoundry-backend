@@ -280,15 +280,14 @@ export class StripeWebhookService {
     const interval = stripeSubscription.items.data[0]?.price?.recurring?.interval
     const billingCycle: 'MONTHLY' | 'YEARLY' = interval === 'year' ? 'YEARLY' : 'MONTHLY'
 
-    // Use top-level period fields from the subscription object.
-    // Cast to any because these fields exist in the API response but the TS types
-    // for the clover API version may not expose them yet.
-    const subAny = stripeSubscription as any
-    const currentPeriodStart = subAny.current_period_start
-      ? new Date(subAny.current_period_start * 1000)
+    // In this Stripe API version, current_period_start/end live on the subscription
+    // ITEM, not the top-level subscription object — read from there instead.
+    const itemAny = stripeSubscription.items.data[0] as any
+    const currentPeriodStart = itemAny?.current_period_start
+      ? new Date(itemAny.current_period_start * 1000)
       : new Date(stripeSubscription.created * 1000)
-    const currentPeriodEnd = subAny.current_period_end
-      ? new Date(subAny.current_period_end * 1000)
+    const currentPeriodEnd = itemAny?.current_period_end
+      ? new Date(itemAny.current_period_end * 1000)
       : (() => {
           const d = new Date(currentPeriodStart)
           interval === 'year' ? d.setFullYear(d.getFullYear() + 1) : d.setMonth(d.getMonth() + 1)

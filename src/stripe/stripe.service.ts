@@ -99,6 +99,9 @@ export class StripeService {
       }
 
       const subAny = sub as any
+      // In this Stripe API version, current_period_start/end live on the subscription
+      // ITEM, not the top-level subscription object — read from there instead.
+      const itemAny = sub.items.data[0] as any
       // A FREE-priced subscription (trialing or not) maps to FORGE in our DB
       const plan = mapStripePlanToPrisma(planKey) ?? SubscriptionPlan.FORGE
       const interval = sub.items.data[0]?.price?.recurring?.interval
@@ -117,13 +120,13 @@ export class StripeService {
           plan,
           status: mapStripeStatus(sub.status),
           billingCycle,
-          currentPeriodStart: subAny.current_period_start
-            ? new Date(subAny.current_period_start * 1000)
+          currentPeriodStart: itemAny?.current_period_start
+            ? new Date(itemAny.current_period_start * 1000)
             : null,
           currentPeriodEnd: trialEnd
             ? new Date(trialEnd * 1000)
-            : subAny.current_period_end
-              ? new Date(subAny.current_period_end * 1000)
+            : itemAny?.current_period_end
+              ? new Date(itemAny.current_period_end * 1000)
               : null,
           currentPrice: (sub.items.data[0]?.price?.unit_amount ?? 0) / 100,
           cancelAt: subAny.cancel_at ? new Date(subAny.cancel_at * 1000) : null,
