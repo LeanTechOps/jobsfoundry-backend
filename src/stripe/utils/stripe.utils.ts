@@ -26,8 +26,6 @@ export function mapStripePlanToPrisma(
 
   const planMap: Record<string, SubscriptionPlan> = {
     FORGE: SubscriptionPlan.FORGE,
-    FORGE_FREE: SubscriptionPlan.FORGE_FREE,
-    CRAFT: SubscriptionPlan.CRAFT,
     LAUNCH: SubscriptionPlan.LAUNCH,
     MOMENTUM: SubscriptionPlan.MOMENTUM,
   }

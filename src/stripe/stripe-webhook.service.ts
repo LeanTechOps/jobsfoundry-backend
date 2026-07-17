@@ -12,10 +12,8 @@ import {
 
 const PLAN_ORDER: Record<string, number> = {
   FORGE: 0,
-  FORGE_FREE: 1,
-  CRAFT: 2,
-  LAUNCH: 3,
-  MOMENTUM: 4,
+  LAUNCH: 1,
+  MOMENTUM: 2,
 }
 
 @Injectable()
@@ -227,8 +225,8 @@ export class StripeWebhookService {
       return
     }
 
-    // For trialing subscriptions: sync IDs, set plan=FORGE_FREE so we can distinguish
-    // from an actual FORGE plan. Stripe fires another event when trial converts to active.
+    // For trialing subscriptions: sync IDs, keep plan=FORGE for the duration of the trial.
+    // Stripe fires another event when the trial converts to active (or a paid plan).
     if (stripeSubscription.status === 'trialing') {
       const subAny = stripeSubscription as any
       const trialEnd: number | null = subAny.trial_end ?? null
@@ -238,20 +236,20 @@ export class StripeWebhookService {
           : (stripeSubscription.customer as Stripe.Customer | null)?.id ?? null
 
       this.logger.log(
-        `[SUB_UPDATED] Trial subscription — setting plan=FORGE_FREE, trialEnd=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
+        `[SUB_UPDATED] Trial subscription — setting plan=FORGE, trialEnd=${trialEnd ? new Date(trialEnd * 1000).toISOString() : 'none'}`,
       )
 
       await this.prisma.subscription.update({
         where: { userId },
         data: {
           stripeSubscriptionId: stripeSubscription.id,
-          plan: SubscriptionPlan.FORGE_FREE,
+          plan: SubscriptionPlan.FORGE,
           ...(customerId && { stripeCustomerId: customerId }),
           currentPeriodStart: new Date(stripeSubscription.created * 1000),
           ...(trialEnd && { currentPeriodEnd: new Date(trialEnd * 1000) }),
         },
       })
-      this.logger.log(`[SUB_UPDATED] Synced trial subscription ${stripeSubscription.id} → FORGE_FREE for userId=${userId}`)
+      this.logger.log(`[SUB_UPDATED] Synced trial subscription ${stripeSubscription.id} → FORGE for userId=${userId}`)
       return
     }
 

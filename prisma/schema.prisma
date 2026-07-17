@@ -381,8 +381,6 @@ enum SubscriptionStatus {
 
 enum SubscriptionPlan {
   FORGE
-  FORGE_FREE
-  CRAFT
   LAUNCH
   MOMENTUM
 }
